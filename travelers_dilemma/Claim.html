@@ -1,0 +1,16 @@
+{{ block title }}Claim{{ endblock }}
+{{ block content }}
+
+    {{ formfields }}
+    {{ next_button }}
+    
+    <p>
+        相手とリアルタイムでチャットをすることができます。
+    </p>
+    <hr>
+    {{ chat }}
+    <hr>
+
+    {{ include_sibling 'instructions.html' }}
+
+{{ endblock }}

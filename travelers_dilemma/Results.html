@@ -1,0 +1,21 @@
+{{ block title }}
+    第{{ player.round_number }}回戦の結果
+{{ endblock }}
+{{ block content }}
+
+    <div style="position: absolute; top: 10px; right: 20px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; font-weight: bold;">
+        これまでの合計得点: {{ cumulative_payoff }}
+    </div>
+
+    <p>
+        あなたの本申告額は {{ player.final_claim }} でした。
+    </p>
+    <p>
+        相手の本申告額は {{ partner.final_claim }} でした。
+    </p>
+    <p>
+        この回戦で、あなたの得た利得は <b>{{ player.payoff }}</b> です。
+    </p>
+
+    {{ next_button }}
+{{ endblock }}

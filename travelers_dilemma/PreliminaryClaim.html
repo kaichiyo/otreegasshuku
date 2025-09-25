@@ -1,0 +1,39 @@
+{{ block title }}
+    ステージ1：事前申告 (第{{ player.round_number }}回戦)
+{{ endblock }}
+{{ block content }}
+
+    {{ if player.round_number > 1 }}
+    <div style="position: absolute; top: 10px; right: 20px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; font-weight: bold;">
+        これまでの合計得点: {{ cumulative_payoff }}
+    </div>
+    {{ endif }}
+
+    {{ if player.round_number > 1 }}
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h5 class="card-title">今回のパートナーに関する情報</h5>
+                <p class="card-text">
+                    あなたの今回のパートナーは、<b>前回のゲームで、事前申告と本申告の金額が
+                    {{ if partner_history.was_consistent }}
+                        <span style="color: green; font-weight: bold;">一致していました</span>。
+                    {{ else }}
+                        <span style="color: red; font-weight: bold;">一致していませんでした</span>。
+                    {{ endif }}
+                    </b>
+                </p>
+            </div>
+        </div>
+    {{ endif }}
+
+    <p>
+        これから、あなたと現在のパートナーは、それぞれ同時に「事前申告」として、いくら申告するつもりかを示します。
+    </p>
+
+    {{ formfields }}
+
+    <p>下のチャット欄を使って、相手と相談することができます。</p>
+    {{ chat }}
+
+    {{ next_button }}
+{{ endblock }}
