@@ -1,9 +1,11 @@
 from otree.api import models, BaseConstants, BaseSubsession, BaseGroup, BasePlayer, Page, WaitPage
-import random # 確率計算のために random をインポート
+import random
 
 doc = """
 A repeated traveler's dilemma game.
-Modification: The information about a partner's past consistency is incorrect with a 1/3 probability.
+Modifications:
+- Participants enter their name at the beginning.
+- Timeouts are set for claim and results pages with automatic submissions.
 """
 
 class C(BaseConstants):
@@ -14,7 +16,6 @@ class C(BaseConstants):
     MAX_CLAIM = 200
     REWARD = 20
     PENALTY = 20
-    # /// 変更点1：誤報の確率を定数として設定 ///
     INCORRECT_INFO_PROB = 1/3
 
 
@@ -36,6 +37,9 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    # /// 変更点1：名前を入力するフィールドを追加 ///
+    participant_name = models.StringField(label="お名前（またはニックネーム）を入力してください。")
+
     preliminary_claim = models.IntegerField(
         min=C.MIN_CLAIM,
         max=C.MAX_CLAIM,
@@ -47,10 +51,7 @@ class Player(BasePlayer):
         label=f"相手の事前申告を踏まえて、{C.MIN_CLAIM}から{C.MAX_CLAIM}の間の整数を「本申告」してください。"
     )
     is_consistent = models.BooleanField()
-    # /// 変更点2：データ記録用のフィールドを追加 ///
-    # プレイヤーに表示されたパートナー情報（真偽が逆の可能性あり）
     displayed_partner_consistency = models.BooleanField()
-    # 表示された情報が正確だったかどうか
     signal_was_accurate = models.BooleanField()
 
 
@@ -86,6 +87,16 @@ def get_partner(player: Player):
 
 
 # PAGES
+# /// 変更点1：名前を入力するページを新しく追加 ///
+class ParticipantName(Page):
+    form_model = 'player'
+    form_fields = ['participant_name']
+
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == 1
+
+
 class Introduction(Page):
     @staticmethod
     def is_displayed(player: Player):
@@ -101,35 +112,36 @@ class Instructions(Page):
 class PreliminaryClaim(Page):
     form_model = 'player'
     form_fields = ['preliminary_claim']
+    # /// 変更点2：タイムアウトを2分に設定 ///
+    timeout_seconds = 120
+
+    # /// 変更点3：タイムアウト時の処理を追加 ///
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened):
+        if timeout_happened:
+            if player.round_number == 1:
+                player.preliminary_claim = C.MIN_CLAIM
+            else:
+                player.preliminary_claim = player.in_round(player.round_number - 1).preliminary_claim
     
     @staticmethod
     def vars_for_template(player: Player):
         partner = get_partner(player)
         partner_history_displayed = None
-
         if player.round_number > 1:
             partner_prev_round = partner.in_round(player.round_number - 1)
-            # パートナーの前回のラウンドでの実際の行動
             actual_consistency = partner_prev_round.is_consistent
-            
-            # /// 変更点3：確率で情報を反転させるロジック ///
             if random.random() < C.INCORRECT_INFO_PROB:
-                # 確率1/3で、真偽が逆の情報が表示される
                 displayed_consistency = not actual_consistency
                 player.signal_was_accurate = False
             else:
-                # 確率2/3で、正しい情報が表示される
                 displayed_consistency = actual_consistency
                 player.signal_was_accurate = True
-            
-            # 表示用の情報を辞書に格納
             partner_history_displayed = {'was_consistent': displayed_consistency}
-            # 記録用の情報をモデルフィールドに保存
             player.displayed_partner_consistency = displayed_consistency
-
         return dict(
             partner=partner,
-            partner_history=partner_history_displayed, # HTMLにはこの表示用の情報を渡す
+            partner_history=partner_history_displayed,
             cumulative_payoff=get_cumulative_payoff(player)
         )
 
@@ -147,6 +159,14 @@ class PreClaimWaitPage(WaitPage):
 class FinalClaim(Page):
     form_model = 'player'
     form_fields = ['final_claim']
+    # /// 変更点2：タイムアウトを2分に設定 ///
+    timeout_seconds = 120
+
+    # /// 変更点3：タイムアウト時の処理を追加 ///
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened):
+        if timeout_happened:
+            player.final_claim = player.preliminary_claim
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -170,6 +190,9 @@ class ResultsWaitPage(WaitPage):
 
 
 class Results(Page):
+    # /// 変更点2：タイムアウトを1分に設定 ///
+    timeout_seconds = 60
+    
     @staticmethod
     def vars_for_template(player: Player):
         partner = get_partner(player)
@@ -196,7 +219,9 @@ class FinalResults(Page):
         }
 
 
+# /// 変更点1：ページシーケンスの先頭に ParticipantName を追加 ///
 page_sequence = [
+    ParticipantName,
     Introduction,
     Instructions,
     PreliminaryClaim,
