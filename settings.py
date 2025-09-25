@@ -38,6 +38,7 @@ DATABASES = {
         'NAME': 'db.sqlite3',
         'OPTIONS': {
             'url': DATABASE_URL,
+            'conn_max_age': 500,
         }
     }
 }
