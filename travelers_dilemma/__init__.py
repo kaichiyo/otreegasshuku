@@ -1,11 +1,9 @@
 from otree.api import models, BaseConstants, BaseSubsession, BaseGroup, BasePlayer, Page, WaitPage
 import random
 
+# (docstring and Class C remain the same)
 doc = """
-A repeated traveler's dilemma game.
-Modifications:
-- Participants enter their name at the beginning.
-- Timeouts are set for claim and results pages with automatic submissions.
+A repeated traveler's dilemma game with synchronization after instructions.
 """
 
 class C(BaseConstants):
@@ -18,7 +16,7 @@ class C(BaseConstants):
     PENALTY = 20
     INCORRECT_INFO_PROB = 1/3
 
-
+# (Subsession, creating_session, Group, Player, and FUNCTIONS remain the same)
 class Subsession(BaseSubsession):
     pass
 
@@ -37,40 +35,30 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    # /// 変更点1：名前を入力するフィールドを追加 ///
     participant_name = models.StringField(label="お名前（またはニックネーム）を入力してください。")
-
     preliminary_claim = models.IntegerField(
-        min=C.MIN_CLAIM,
-        max=C.MAX_CLAIM,
+        min=C.MIN_CLAIM, max=C.MAX_CLAIM,
         label=f"まず、{C.MIN_CLAIM}から{C.MAX_CLAIM}の間の整数を「事前申告」してください。"
     )
     final_claim = models.IntegerField(
-        min=C.MIN_CLAIM,
-        max=C.MAX_CLAIM,
+        min=C.MIN_CLAIM, max=C.MAX_CLAIM,
         label=f"相手の事前申告を踏まえて、{C.MIN_CLAIM}から{C.MAX_CLAIM}の間の整数を「本申告」してください。"
     )
     is_consistent = models.BooleanField()
     displayed_partner_consistency = models.BooleanField()
     signal_was_accurate = models.BooleanField()
 
-
-# FUNCTIONS
 def get_cumulative_payoff(player: Player):
-    if player.round_number == 1:
-        return 0
+    if player.round_number == 1: return 0
     return sum(p.payoff for p in player.in_rounds(1, player.round_number - 1))
 
 def set_consistency(player: Player):
     player.is_consistent = (player.preliminary_claim == player.final_claim)
 
 def set_payoffs(group: Group):
-    for p in group.get_players():
-        set_consistency(p)
-
+    for p in group.get_players(): set_consistency(p)
     p1 = group.get_player_by_id(1)
     p2 = group.get_player_by_id(2)
-
     if p1.final_claim < p2.final_claim:
         p1.payoff = p1.final_claim + C.REWARD
         p2.payoff = p1.final_claim - C.PENALTY
@@ -81,17 +69,14 @@ def set_payoffs(group: Group):
         p1.payoff = p1.final_claim
         p2.payoff = p2.final_claim
 
-
 def get_partner(player: Player):
     return player.get_others_in_group()[0]
 
 
 # PAGES
-# /// 変更点1：名前を入力するページを新しく追加 ///
 class ParticipantName(Page):
     form_model = 'player'
     form_fields = ['participant_name']
-
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number == 1
@@ -108,14 +93,19 @@ class Instructions(Page):
     def is_displayed(player: Player):
         return player.round_number == 1
 
+# /// 変更点：全員が説明を読み終わるのを待つための待機ページを追加 ///
+class InstructionsWaitPage(WaitPage):
+    body_text = "全員が説明を読み終えるまで、しばらくお待ちください。まもなくゲームが開始されます。"
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == 1
+
 
 class PreliminaryClaim(Page):
     form_model = 'player'
     form_fields = ['preliminary_claim']
-    # /// 変更点2：タイムアウトを2分に設定 ///
     timeout_seconds = 120
 
-    # /// 変更点3：タイムアウト時の処理を追加 ///
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
         if timeout_happened:
@@ -149,25 +139,20 @@ class PreliminaryClaim(Page):
     def is_displayed(player: Player):
         return player.round_number <= C.NUM_ROUNDS
 
-
+# (PreClaimWaitPage, FinalClaim, ResultsWaitPage, Results, FinalResults remain the same)
 class PreClaimWaitPage(WaitPage):
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number <= C.NUM_ROUNDS
 
-
 class FinalClaim(Page):
     form_model = 'player'
     form_fields = ['final_claim']
-    # /// 変更点2：タイムアウトを2分に設定 ///
     timeout_seconds = 120
-
-    # /// 変更点3：タイムアウト時の処理を追加 ///
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
         if timeout_happened:
             player.final_claim = player.preliminary_claim
-
     @staticmethod
     def vars_for_template(player: Player):
         partner = get_partner(player)
@@ -176,11 +161,9 @@ class FinalClaim(Page):
             preliminary_claim=partner.preliminary_claim,
             cumulative_payoff=get_cumulative_payoff(player)
         )
-    
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number <= C.NUM_ROUNDS
-
 
 class ResultsWaitPage(WaitPage):
     after_all_players_arrive = set_payoffs
@@ -188,42 +171,32 @@ class ResultsWaitPage(WaitPage):
     def is_displayed(player: Player):
         return player.round_number <= C.NUM_ROUNDS
 
-
 class Results(Page):
-    # /// 変更点2：タイムアウトを1分に設定 ///
     timeout_seconds = 60
-    
     @staticmethod
     def vars_for_template(player: Player):
         partner = get_partner(player)
-        return dict(
-            partner=partner,
-            cumulative_payoff=get_cumulative_payoff(player)
-        )
-    
+        return dict(partner=partner, cumulative_payoff=get_cumulative_payoff(player))
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number <= C.NUM_ROUNDS
-
 
 class FinalResults(Page):
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number == C.NUM_ROUNDS
-
     @staticmethod
     def vars_for_template(player: Player):
         total_payoff = sum(p.payoff for p in player.in_all_rounds())
-        return {
-            'total_payoff': total_payoff,
-        }
+        return {'total_payoff': total_payoff}
 
 
-# /// 変更点1：ページシーケンスの先頭に ParticipantName を追加 ///
+# /// 変更点：ページシーケンスに InstructionsWaitPage を追加 ///
 page_sequence = [
     ParticipantName,
     Introduction,
     Instructions,
+    InstructionsWaitPage, # 追加
     PreliminaryClaim,
     PreClaimWaitPage,
     FinalClaim,
