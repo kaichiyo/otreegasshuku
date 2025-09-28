@@ -4,7 +4,7 @@ SESSION_CONFIGS = [
     dict(
        name = 'TD',
        display_name = "旅人のジレンマゲーム",
-       num_demo_participants = 4,
+       num_demo_participants = 2,
        app_sequence = ['travelers_dilemma']
    )  
 ]

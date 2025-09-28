@@ -7,18 +7,29 @@
         これまでの合計得点: {{ cumulative_payoff }}
     </div>
 
+    <div class="card bg-light mb-3">
+        <div class="card-body">
+            <h5 class="card-title">このラウンドのルール</h5>
+            <p class="card-text">
+                このラウンドのボーナス・ペナルティ額は <b>{{ bonus_penalty_amount }}</b> ポイントです。
+            </p>
+        </div>
+    </div>
+
     <p>
-        相手は、今回の事前申告で <b>{{ preliminary_claim }}</b> ポイントと申告しました。
+        パートナーは、今回の事前申告で <b>{{ preliminary_claim }}</b> ポイントと申告しました。
     </p>
     <p>
-        相手の事前申告を踏まえて、あなたの「本申告」額を決定してください。<br>
+        パートナーの事前申告を踏まえて、あなたの「本申告」額を決定してください。<br>
         ここでの申告額によって、あなたの利得が最終的に決定されます。
     </p>
 
     {{ formfields }}
 
-    <p>下のチャット欄を使って、相手と相談することができます。</p>
+    <hr>
+    <p>下のチャット欄を使って、パートナーと相談することができます。</p>
     {{ chat }}
 
     {{ next_button }}
+
 {{ endblock }}
